@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# 出图产物：catalog/out 只保留 png 预览，其余随时可重跑
+catalog/out/*.tif
+catalog/out/*.pdf
+catalog/out/*.opju
+
+# 编辑器 / 系统
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
