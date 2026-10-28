@@ -19,7 +19,7 @@
 | 12 | 给文本设 `label.set_str('font', ...)` 会把字形打坏（变成一排方框） | 用 LabTalk：`<对象名>.font=font(Times New Roman);`（2026 实测 PDF 里是 TimesNewRomanPSMT）。`style.text_label()` 已内置 |
 | 13 | 双 log 轴上面板字母会跑到中间 | 不要用"数据范围的百分比"猜位置。`Page.letter()` / `caption()` 按**页面 mm** 定位：`style.place_mm()` 把 mm 换成数据坐标（log 轴按对数插值）再写文字对象的 `x1/y1`（左上角） |
 | 14 | `add_label` 文字对象用 `set_float('pt', 18)` 设字号不准（2026 实测 18 → 21.8 pt）；`pt` / `size` / `fontsize` 都不是正确属性 | 用 `<对象名>.fsize=18;`（2026 实测 PDF 里正好 18.0 pt）。`style.text_label()` 已内置；对象名取 `lab.name` |
-| 15 | 手搓右 Y 轴（`add_layer(2)`）在 2026 上刻度会跑到内侧、量程串到左轴 | **用 Origin 自带双 Y 模板**：`op.new_graph(template='doubley')` → 得到 2 个层，`g[0]` 左轴、`g[1]` 右轴。把右层 `layer.x.showAxes/labels=0`，各自 `rescale()` + 各自设 y 范围，就是标准的双 Y 图（`examples/tpl_dtg_dual.py` 就是这么做的） |
+| 15 | 手搓右 Y 轴（`add_layer(2)`）在 2026 上刻度会跑到内侧、量程串到左轴 | **用 Origin 自带双 Y 模板**：`op.new_graph(template='doubley')` → 得到 2 个层，`g[0]` 左轴、`g[1]` 右轴。把右层 `layer.x.showAxes/labels=0`，各自 `rescale()` + 各自设 y 范围，就是标准的双 Y 图（`catalog/thermal/tga_dtg_dualy.py` 就是这么做的） |
 | 16 | 给 X 轴换类别名用 `layer.x.label.type=10` 会变方框（和 Times New Roman 冲突） | 用 `Page.categories(i, names)`：关掉 X 刻度数字，按 mm 把类别名居中写在轴下 |
 | 17 | 轴标题被自动改成列名（显示成 "w 5 °C (%)" 之类） | Origin 会把标题自动绑定到列 long name。要么把列 long name 直接起成 `Weight (%)` / `DTG (%/℃)`，要么别用 `layer.x.title$=`；用 `gl.axis('x').title = ...` 之前先把列名改好 |
 | 18 | **双 Y 图的轴颜色会跟着该层第一条曲线变**（右轴变蓝、左轴变红） | 先在该层画一条 `transparency = 100` 的黑色引导线（`p.color='#000000'; p.transparency=100`），轴就固定成黑色，随后再画彩色曲线。左右两层都要做 |

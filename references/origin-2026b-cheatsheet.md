@@ -144,7 +144,7 @@ Y 刻度关掉：`layer.y.showLabels=0; layer.y.ticks=0;`
 
 ```python
 pg.bar(0, ws, xcol, [ycol1, ycol2], errs=[ecol1, ecol2], colors=C[:2])
-gl.lt_exec('layer.x.label.type=10; layer.x.label.string$="A B C";')  # 见坑 C
+pg.categories(0, ['A', 'B', 'C'])   # 类别名写在轴下；别用 layer.x.label.type=10（坑 #16，字会变方框）
 ```
 
 ### R4 饼图（3D → 2D 在 Plot Details 里改，脚本只管出图）
