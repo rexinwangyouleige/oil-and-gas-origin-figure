@@ -16,7 +16,7 @@ oil-and-gas-origin-figure/
 └── references/
     ├── style-spec.md      用户的硬性样式规范 + 配色用法        ← 每次出图前读
     ├── chart-selection.md 油气三类方向的选图规则                ← 选图时读
-    ├── pitfalls.md        38 条 Origin 实测坑                  ← 写新脚本 / 样式不生效时读
+    ├── pitfalls.md        44 条 Origin 实测坑                  ← 写新脚本 / 样式不生效时读
     ├── origin-2026b-cheatsheet.md  模板清单、属性速查、配方
     └── originpro_API_手册.md       originpro 全量 API（6000+ 行，按需 grep，别整篇读）
 ```
@@ -24,7 +24,9 @@ oil-and-gas-origin-figure/
 ## 硬性规范（摘要，详见 references/style-spec.md）
 
 西文 Times New Roman、中文宋体，覆盖所有文字；字号 7–9 pt（刻度 7 / 标题 8 / 标注 8 / 字母 9 粗体）；
-有数据的边主刻度朝内、上边框只留线、无次刻度；单位不重复；双 Y 用 doubley；题注无边框。
+有数据的边主刻度朝内、上边框只留线、无次刻度；单位不重复；双 Y 用 doubley；题注无边框；
+**多曲线 / 多序列图默认加图例**：文字取列的 long name、无边框、放坐标区四角中最空的那个角，四角都占满就把页面上边加高放右上角。
+两档风格：`normal`（默认）与 `bold`（明显版：字号 9–11、线 2.0 pt、轴 1.5 pt、刻度长 4.5、符号 6）。
 这些都是默认值，**不用等用户再提**。和通用作图建议冲突时（例如有人主张 Arial、不用双 Y），以这里为准。
 
 ## 工作流（不要跳步）
@@ -67,23 +69,31 @@ python -m ogfig.cli spec --journal single     # 不开 Origin，打印尺寸 / �
 
 ### 4. 出图
 ```python
+import ogfig
 from ogfig import Page, DualY, style, export
 
+style.set_preset('normal')                          # 或 'bold' 出"明显版"（字号 10、线 2.0 pt）
 pg = Page(rows=2, cols=2, journal='double')        # 页面 = 180 × 130 mm，边距按 mm
 ws = pg.sheet('PROD', 3)
 ws.from_list(0, t, lname='Time', units='d')
-ws.from_list(1, q, lname='Rate')
+ws.from_list(1, q, lname='产油量 q\\-(o) (10\\+(4) t)')   # ← 图例文字就取这个 long name
 pg.plot(0, ws, 1, 0, kind='logy', color=style.C[0])  # 'l' 's' 'ls' 'logy' 'loglog'
 pg.style(0, 'Production time (d)', 'q\\-(g) (10\\+(4) m\\+(3)/d)')
 pg.categories(2, ['Baseline', 'Acid', 'Frac'])       # 类别轴
 pg.caption(0, 'Well A-12', where='tr')               # 框内空白角
-pg.drop_legends()
+pg.legend(0)                                        # ← 图例：无边框、自动挑最空的角
 for i, ch in enumerate('abcd'):
     pg.letter(i, ch)                                 # 最后加，按 mm 对齐
 pg.finish()
 paths = export.save(pg.g, r'D:\fig\fig1.png')       # png + tif(600 dpi) + pdf + opju
 print(export.report(pg.g, paths))                    # 自检报告 + 灰度预览
 ```
+
+图例规则（`pg.legend(i, where='auto')`，详见 style-spec 第 5 节）：
+条目自动来自**列的 long name**（所以列名里直接写单位和上下标）；无边框；`auto` 会导出探针图，
+比较四个角的墨迹密度，放最空的那个；四角都有数据时把页面上边加高 `legend_grow_mm`（默认 20 mm）放右上角。
+想指定角就传 `where='tl'/'tr'/'bl'/'br'`；单序列图不用加图例；**双 Y 图别用 `pg.legend()`**（图例只认本层 plot，右层条目会丢），改用曲线旁直接标注。
+
 双 Y：`pg = DualY(journal='single')` → `pg.guide(ws, y)` 先画透明引导线 → 左层 `pg.plot(0, ...)` / `pg.bar(0, ...)`
 → `pg.guide(ws, y2, right=True)` → `pg.plot_right(...)` → `pg.style_dual(xt, yt, y2t)`。参见 `catalog/production/bar_line_dualy.py`。
 
@@ -110,9 +120,13 @@ print(export.report(pg.g, paths))                    # 自检报告 + 灰度预�
 
 ## 改偏好
 
-全部在 `ogfig/config.py` 的 `PREFS`：配色 `palette`、自定义色 `colors`、版式 `journal` / `page_mm`、
-边距 `margin_mm` / `gap_mm` / `margin_dual_mm`、字号 `fs_tick` / `fs_title` / `fs_note` / `fs_letter`、
-字体 `font_latin` / `font_cjk`、线宽 `line_width` / `axis_thickness`、刻度 `tick_length` / `tick_major`。
+**风格档**：`ogfig/config.py` 的 `STYLE_PRESETS`（`normal` / `bold`）与 `PRESET`；
+脚本里临时切档用 `style.set_preset('bold')`，**要在 `Page(...)` 之前调用**（边距也是档位的一部分，见下方坑）。
+`bold` = 明显版：字号 9/10/10/11、轴 1.5 pt、线 2.0 pt、刻度长 4.5、符号 6、页边距同步放大——适合幻灯片 / 挂图 / 答辩。
+
+其余全部在 `ogfig/config.py` 的 `BASE`：配色 `palette`、自定义色 `colors`、版式 `journal` / `page_mm`、
+边距 `margin_mm` / `gap_mm` / `margin_dual_mm`、字体 `font_latin` / `font_cjk`、刻度 `tick_major`、
+图例 `legend_pad_mm` / `legend_grow_mm` / `legend_ink_max`。
 改完重跑 `python -m ogfig.cli templates`，让模板跟上新规范。
 
 ## 先决条件

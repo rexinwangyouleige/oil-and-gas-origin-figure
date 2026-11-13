@@ -7,7 +7,7 @@ import os
 
 import originpro as op
 
-from .config import PALETTES, PREFS
+from .config import BASE, PALETTES, PREFS, STYLE_PRESETS
 
 # ---------------------------------------------------------------- palettes
 OG = PALETTES['OG']
@@ -24,16 +24,44 @@ GRAY = '#595959'
 FIT_GRAY = '#404040'
 F_LATIN = PREFS.get('font_latin', 'Times New Roman')
 
-DEFAULTS = dict(
-    axis_thickness=PREFS.get('axis_thickness', 0.75),
-    tick_length=PREFS.get('tick_length', 3),
-    mtick_length=0,
-    tick_thickness=PREFS.get('axis_thickness', 0.75),
-    line_width=PREFS.get('line_width', 1.0),
-    symbol_size=PREFS.get('symbol_size', 4),
-    symbol_kind=2,
-    tick_mask=1 if PREFS.get('tick_major', 'in') == 'in' else 2,
-)
+
+def _defaults():
+    return dict(
+        axis_thickness=PREFS.get('axis_thickness', 0.75),
+        tick_length=PREFS.get('tick_length', 3),
+        mtick_length=0,
+        tick_thickness=PREFS.get('axis_thickness', 0.75),
+        line_width=PREFS.get('line_width', 1.0),
+        symbol_size=PREFS.get('symbol_size', 4),
+        symbol_kind=2,
+        tick_mask=1 if PREFS.get('tick_major', 'in') == 'in' else 2,
+    )
+
+
+DEFAULTS = _defaults()
+
+
+def set_preset(name):
+    """切换风格档：'normal'（默认，7–9 pt 细线）或 'bold'（明显版，9–11 pt + 加粗）。
+
+    原地更新 PREFS / DEFAULTS / C —— 其他模块持有的都是同一个对象引用，所以
+    `import` 之后再切档也生效，不必重新导入。返回当前生效的 PREFS 副本。
+    """
+    name = str(name).lower()
+    if name not in STYLE_PRESETS:
+        raise ValueError('未知风格档 %r，可选：%s' % (name, ', '.join(STYLE_PRESETS)))
+    global C
+    PREFS.clear()
+    PREFS.update({k: (list(v) if isinstance(v, list) else v) for k, v in BASE.items()})
+    PREFS.update(STYLE_PRESETS[name])
+    PREFS['preset'] = name
+    C = PREFS.get('colors') or PALETTES[PREFS.get('palette', 'THERM')]
+    DEFAULTS.clear()
+    DEFAULTS.update(_defaults())
+    return dict(PREFS)
+
+
+# 不传参 = 用 config 里的默认档位（PRESET）
 
 # ---------------------------------------------------------------- journals
 # 档位只管页面尺寸（mm）；字号一律取 PREFS 里的绝对 pt
@@ -388,6 +416,58 @@ def drop_legends(gl):
             lb.remove()
     except Exception:
         pass
+
+
+# ---------------------------------------------------------------- legend
+def _px_per_mm():
+    return (op.lt_float('page.resx') or 600.0) / 25.4
+
+
+def legend_size_mm(gl=None):
+    """图例框的 (宽, 高) mm：legend.width/height 是像素，按 page.resx 换算。"""
+    ppm = _px_per_mm()
+    return (op.lt_float('legend.width') / ppm, op.lt_float('legend.height') / ppm)
+
+
+def make_legend(gl, pt=None):
+    """建 / 刷新图例：**无边框 + Times New Roman + fs_note 字号**。
+
+    条目文字由 Origin 的 `\\l(n) %(n)` 占位自动生成，来源就是**数据列的 long name**——
+    所以"图例文字来自表格数据"是默认行为：改列的 long name 即可改图例文字，不用手写。
+    中文没有 Times New Roman 字形时 Origin 自动回退宋体（导 PDF 实测正常，见 pitfalls #40）。
+    """
+    activate(gl)
+    if gl.label('legend') is None:
+        gl.lt_exec('legend')
+    lt = gl.lt_exec
+    lt('legend.font=font(%s);' % F_LATIN)
+    lt('legend.fsize=%g;' % (pt or PREFS.get('fs_note', 8)))
+    lt('legend.background=0;')          # 图例的"边框"就是 background，0 = 无边框
+    lt('layer.factor=1;')
+    return gl.label('legend')
+
+
+def legend_place_mm(gl, frame, x_mm, y_mm, size=None):
+    """按页面 mm 把图例**左上角**放到 (x_mm, y_mm)，允许超出坐标区（放加高后的空白带）。
+
+    ⚠️ legend.x / legend.y 是图例框的**中心**（数据坐标），实测偏移正好半个宽高（坑 #41），
+    所以先加半个宽高再换算。
+    """
+    w, h = size or legend_size_mm(gl)
+    x, y = mm_to_data(gl, frame, x_mm + w / 2.0, y_mm + h / 2.0)
+    activate(gl)
+    gl.lt_exec('legend.x=%.10g; legend.y=%.10g;' % (x, y))
+    return x_mm, y_mm, w, h
+
+
+def legend_place(gl, frame, where='tr', pad_mm=None, size=None):
+    """放到坐标区的某个角：where = 'tl' / 'tr' / 'bl' / 'br'。"""
+    w, h = size or legend_size_mm(gl)
+    L, T, W, H = frame
+    pad = PREFS.get('legend_pad_mm', 2.0) if pad_mm is None else pad_mm
+    x_mm = L + pad if where[1] == 'l' else L + W - pad - w
+    y_mm = T + pad if where[0] == 't' else T + H - pad - h
+    return legend_place_mm(gl, frame, x_mm, y_mm, (w, h))
 
 
 def overline_warning():

@@ -13,3 +13,5 @@ catalog/out/*.opju
 Thumbs.db
 .vscode/
 .idea/
+
+catalog/out/*_gray.png

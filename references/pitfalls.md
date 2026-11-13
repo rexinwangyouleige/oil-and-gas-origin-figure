@@ -43,3 +43,9 @@
 | 36 | **3D 饼的扇形颜色改不了**：`set -c color(...)` 只把整个饼刷成一个色；`layer.pie3d / pie.tilt / pie.thickness / pie.depth` 这些候选属性名读回来全是 nan（不存在） | 扇形色 = Origin 系统色序（By Points），脚本读不到也写不了。要配色一致就反过来：导出一次取色，再把同图的柱子 / 曲线刷成那 5 个扇区色；或在 GUI 的 Plot Details 里改 Color List。见 `catalog/production/bar_pie3d.py` |
 | 37 | **文字对象加粗无效**：`label.set_int('bold',1)`、LabTalk `<name>.bold=1` 都静默失败，PDF 里仍是 `TimesNewRomanPSMT` | 目前无解，接受常规字重（字号仍按 9 pt）。别试 `<name>.font=font(Times New Roman:bold)`——会把字形打成一排乱码（同 #12） |
 | 38 | **`add_label` / `text_label` 的 x1/y1 只吃 Python float**：传 numpy 标量（如 `np.arange` 的元素）→ `TypeError: argument 3 of type 'double'` | 调之前 `x, y = float(x), float(y)`；`Page.categories()` 传的是 Python int，所以平时不报错 |
+| 39 | **图例文字从哪来**：`legend` 命令建出来的图例，内部文本是 `\l(1) %(1)\r\n\l(2) %(2)…`，`%(n)` 就是第 n 个 plot 数据集的 **long name** | 不用手写条目：把单位和上下标写进列的 long name 即可。实测 `lb.text` 能读到这段占位串 |
+| 40 | **图例里的中文**：`legend.font=font(Times New Roman)` 之后中文照样正常显示——Origin 自动回退宋体；导 PDF 后中文会变成**矢量轮廓**（`get_fonts` 里只有 TimesNewRomanPSMT，`get_text` 也提不到中文），这是正常的，不是丢字 | 不用给图例单独设宋体；只要别用 `set_str('font', …)` 那种写法（坑 #12） |
+| 41 | **`legend.x` / `legend.y` 是图例框的中心**（数据坐标），不是左上角；`legend.left/top` 才是像素坐标。按左上角算会整体偏半个宽高 | `style.legend_place_mm()` 已按"先加半个宽高"处理；自己写就 `x = mm_to_data(x_mm + w/2)` |
+| 42 | **`'ls'` 会在图例里出现两条**：线 + 点是两个 plot，Origin 默认每个 plot 一条 | `Page.legend()` 按 `_legend_idx` 只保留线那条，并用 `lb.set_str('text', r'\l(1) %(1)\r\n\l(3) %(3)')` 改写。⚠️ 用 LabTalk 的 `legend.text$="…"` 会把 `%()` **当场展开**成列名，且 `\r\n` 必须写成真换行 |
+| 43 | **判断"哪个角是空的"时，图例自己会占住右上角** | 先 `legend.show=0` → 导探针图 → 统计四角墨迹 → `legend.show=1` 再定位。`Page.legend()` 已内置 |
+| 44 | **字号放大后页边距不改，轴标题会压出界**：bold 档 10 pt 轴标题在 14 mm 左边距下，`check` 报 `in_page FAIL`（"t )" 出界） | 档位里连 `margin_mm` 一起改（bold：17/4/8/13）；且 `set_preset()` 要在 `Page(...)` 之前调，否则边距已定 |

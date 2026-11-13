@@ -14,6 +14,7 @@
 | 并排双面板、类别轴、区块对比 / side by side, categorical | `production/bar_line_side_by_side.py` | `Page(1, 2)` + `categories()` | 180 × 70 |
 | 饼图 + 折线、产量构成 / pie + line | `production/pie_line.py` | `pie2d` + 加一个 line 层 | 180 × 80 |
 | 柱状 + 3D 饼、**内嵌小图 / inset / 画中画**、绝对量 + 占比 / bar + 3D pie inset | `production/bar_pie3d.py`（默认 inset；加参数 `side` 出并排两面板） | `Page(1, 2, template='pie')` + 手工毫米定位 | 120 × 80（inset）/ 180 × 80（side） |
+| 多曲线 + **自动图例**、空白角、**明显版风格档** / multi-curve + auto legend, bold preset | `production/trend_legend.py`（`normal` / `bold` / `grow` 三种模式） | `Page(1, 1)` + `pg.legend()` + `style.set_preset()` | 90 × 70（grow 时 90 × 90） |
 | 热重、TG、DTG、失重 / TGA, DTG | `thermal/tga_dtg_dualy.py`（读真实 xlsx） | `DualY` + `og_doubley` | 90 × 70 |
 | 瀑布图、错位叠放、升温速率 / waterfall, heating rate | `thermal/tga_waterfall.py` | `line` + 手动定位 | 90 × 110 |
 | 叠谱、XRD、Raman、NMR T2 / stacked spectra | `spectra/xrd_stack.py` | `Page` + `og_stack` | 90 × 110 |

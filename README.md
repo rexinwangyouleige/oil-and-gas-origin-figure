@@ -10,9 +10,13 @@
 |---|---|
 | ![decline dashboard](catalog/out/decline_dashboard_2x2.png) | ![bar + pie inset](catalog/out/bar_pie3d_inset.png) |
 
-| TG / DTG 双 Y |
-|---|
-| ![tga dtg](catalog/out/tga_dtg_dualy.png) |
+| TG / DTG 双 Y | 自动图例（normal / bold 风格档） |
+|---|---|
+| ![tga dtg](catalog/out/tga_dtg_dualy.png) | ![trend legend](catalog/out/trend_legend.png) |
+
+| 明显版（bold：字号 10、线 2 pt） | 四角占满 → 加高页面放右上角 |
+|---|---|
+| ![bold](catalog/out/trend_legend_bold.png) | ![grow](catalog/out/trend_legend_grow.png) |
 
 ## 目录
 
@@ -21,7 +25,7 @@ SKILL.md                工作流：明确论点 → 看数据 → 选图 → �
 ogfig/                  引擎：Page / DualY、style、export、check、cli、templates、data、config
 catalog/                图型素材库（INDEX.md 是关键词 → 脚本对照表），预览在 catalog/out/
 templates/              预设 .otpu（og_line / og_loglog / og_stack / og_doubley）
-references/             style-spec 硬性规范 / chart-selection 选图规则 / pitfalls 38 条实测坑 /
+references/             style-spec 硬性规范 / chart-selection 选图规则 / pitfalls 44 条实测坑 /
                         origin-2026b-cheatsheet 属性速查 / originpro API 手册
 ```
 
@@ -41,6 +45,9 @@ python -m ogfig.cli inspect data.xlsx         # 看数据：列名、范围、�
 python catalog/production/decline_dashboard_2x2.py    # 跑一个现成图型
 python catalog/production/bar_pie3d.py                # 柱状 + 3D 饼（inset，默认）
 python catalog/production/bar_pie3d.py side           # 同一批数据的并排版式
+python catalog/production/trend_legend.py             # 多曲线 + 自动图例（四角挑最空的）
+python catalog/production/trend_legend.py bold        # 明显版：字号 10 / 线 2.0 pt / 轴 1.5 pt
+python catalog/production/trend_legend.py grow        # 四角都占满 → 自动加高页面
 ```
 
 脚本都在 skill 根目录跑，产物落在 `catalog/out/<名字>.png / .tif / .pdf / .opju / _gray.png`。
@@ -54,7 +61,10 @@ python catalog/production/bar_pie3d.py side           # 同一批数据的并排
 
 西文 Times New Roman / 中文宋体；字号 7–9 pt（刻度 7、轴标题 8、图例与标注 8、面板字母 9）；
 有数据的边主刻度朝内、无次刻度、上边框只留线；双 Y 用 Origin 自带 doubley；题注无边框；
-线宽：坐标轴 0.75 pt、曲线 1.0 pt、主刻度长 3。全部可在 `ogfig/config.py` 的 `PREFS` 里改。
+线宽：坐标轴 0.75 pt、曲线 1.0 pt、主刻度长 3。
+**图例**：多曲线 / 多序列默认加，文字取列 long name、无边框、自动放四角里最空的角（四角都满就加高页面放右上角）。
+**两档风格**：`normal`（投稿，即上述数值）与 `bold`（明显版：字号 9–11、轴 1.5 pt、线 2.0 pt、刻度长 4.5、符号 6），`style.set_preset('bold')` 切换。
+全部可在 `ogfig/config.py` 的 `BASE` / `STYLE_PRESETS` 里改。
 
 ## 版式用语（说错就画错）
 
@@ -68,4 +78,4 @@ python catalog/production/bar_pie3d.py side           # 同一批数据的并排
 
 ## 许可
 
-未声明许可证。如需开源复用，建议补一个（例如 MIT）。
+[MIT](LICENSE)
