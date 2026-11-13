@@ -81,6 +81,14 @@ python catalog/production/trend_legend.py tight       # Fit Page/Layer 去白边
 
 "组合图 + 一个画布"默认按 **inset** 理解（一张图、一个坐标区），不是并排。
 
+## 版本历史
+
+| 版本 | 内容 |
+|---|---|
+| **v0.2.1** | 图例**绝不压数据**（零墨迹角 → 放大坐标区 3 轮 → 7 pt → 告警）；多列排布（`ncols` 自动/指定）；`pg.fit_page()` 去白边（Origin「页面→图层」+「图层→页面」）；清理实验死代码 |
+| **v0.2.0** | **自动图例**（文字取列 long name、无边框、自动挑空白角）；**`bold` 明显版风格档**（字号 9–11、轴 1.5 pt、线 2.0 pt、刻度 4.5、符号 6、页边距同步放大）；`catalog/production/trend_legend.py` 示例 |
+| v0.1.0 | 首个可用版本：ogfig 引擎（Page / DualY / style / export / check / cli / templates）、9 个图型脚本、样式规范、坑清单、2026b 速查、API 手册 |
+
 ## 许可
 
 [MIT](LICENSE)
