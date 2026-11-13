@@ -47,7 +47,9 @@ python catalog/production/bar_pie3d.py                # 柱状 + 3D 饼（inset�
 python catalog/production/bar_pie3d.py side           # 同一批数据的并排版式
 python catalog/production/trend_legend.py             # 多曲线 + 自动图例（四角挑最空的）
 python catalog/production/trend_legend.py bold        # 明显版：字号 10 / 线 2.0 pt / 轴 1.5 pt
-python catalog/production/trend_legend.py grow        # 四角都占满 → 自动加高页面
+python catalog/production/trend_legend.py grow        # 四角都占满 → 放大坐标区
+python catalog/production/trend_legend.py cols        # 6 条曲线 → 图例自动两列
+python catalog/production/trend_legend.py tight       # Fit Page/Layer 去白边
 ```
 
 脚本都在 skill 根目录跑，产物落在 `catalog/out/<名字>.png / .tif / .pdf / .opju / _gray.png`。
@@ -62,8 +64,11 @@ python catalog/production/trend_legend.py grow        # 四角都占满 → 自�
 西文 Times New Roman / 中文宋体；字号 7–9 pt（刻度 7、轴标题 8、图例与标注 8、面板字母 9）；
 有数据的边主刻度朝内、无次刻度、上边框只留线；双 Y 用 Origin 自带 doubley；题注无边框；
 线宽：坐标轴 0.75 pt、曲线 1.0 pt、主刻度长 3。
-**图例**：多曲线 / 多序列默认加，文字取列 long name、无边框、自动放四角里最空的角（四角都满就加高页面放右上角）。
+**图例**：多曲线 / 多序列默认加，文字取列 long name、无边框、自动放四角里最空的角；
+**硬规则：图例绝不压数据**——四角都占住就放大坐标区重试（最多 3 轮）、再不行把字号降到 7 pt，最后才告警退化；
+条目多时自动排 1 / 2 / 3 列（`ncols=2` 可强制）。
 **两档风格**：`normal`（投稿，即上述数值）与 `bold`（明显版：字号 9–11、轴 1.5 pt、线 2.0 pt、刻度长 4.5、符号 6），`style.set_preset('bold')` 切换。
+**去白边**：`pg.fit_page()` 调 Origin 的「页面→图层」「图层→页面」两条命令，页面边界=内容边界。
 全部可在 `ogfig/config.py` 的 `BASE` / `STYLE_PRESETS` 里改。
 
 ## 版式用语（说错就画错）

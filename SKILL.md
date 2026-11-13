@@ -25,7 +25,7 @@ oil-and-gas-origin-figure/
 
 西文 Times New Roman、中文宋体，覆盖所有文字；字号 7–9 pt（刻度 7 / 标题 8 / 标注 8 / 字母 9 粗体）；
 有数据的边主刻度朝内、上边框只留线、无次刻度；单位不重复；双 Y 用 doubley；题注无边框；
-**多曲线 / 多序列图默认加图例**：文字取列的 long name、无边框、放坐标区四角中最空的那个角，四角都占满就把页面上边加高放右上角。
+**多曲线 / 多序列图默认加图例**：文字取列的 long name、无边框、放坐标区四角中最空的那个角；**图例绝不压数据**——四角都被占住就放大坐标区（XY 同步），仍不行再降字号。
 两档风格：`normal`（默认）与 `bold`（明显版：字号 9–11、线 2.0 pt、轴 1.5 pt、刻度长 4.5、符号 6）。
 这些都是默认值，**不用等用户再提**。和通用作图建议冲突时（例如有人主张 Arial、不用双 Y），以这里为准。
 
@@ -89,10 +89,12 @@ paths = export.save(pg.g, r'D:\fig\fig1.png')       # png + tif(600 dpi) + pdf +
 print(export.report(pg.g, paths))                    # 自检报告 + 灰度预览
 ```
 
-图例规则（`pg.legend(i, where='auto')`，详见 style-spec 第 5 节）：
+图例规则（`pg.legend(i, where='auto', ncols=None)`，详见 style-spec 第 5 节）：
 条目自动来自**列的 long name**（所以列名里直接写单位和上下标）；无边框；`auto` 会导出探针图，
 比较四个角的墨迹密度，放最空的那个；四角都有数据时把页面上边加高 `legend_grow_mm`（默认 20 mm）放右上角。
-想指定角就传 `where='tl'/'tr'/'bl'/'br'`；单序列图不用加图例；**双 Y 图别用 `pg.legend()`**（图例只认本层 plot，右层条目会丢），改用曲线旁直接标注。
+条目多时可以排成多列（`ncols=2` 或留 `None` 让脚本按'列数×行数'自动挑能塞进空角的排法，Origin 图例用制表符分列）；四角都占不下才把该行坐标区加高 `legend_grow_mm`，**图例始终留在坐标区框内**。想指定角就传 `where='tl'/'tr'/'bl'/'br'`；单序列图不用加图例；**双 Y 图别用 `pg.legend()`**（图例只认本层 plot，右层条目会丢），改用曲线旁直接标注。
+
+去白边（可选）：`pg.fit_page()` 调 Origin 的两条命令——`run.section(Graph, FitPageToAllLayers)`（调整页面至图层大小，Ctrl+Shift+E）+ `run.section(Graph, FitLayerToPage)`（调整图层至页面大小，Ctrl+\\\\ / Ctrl+0），页面边界就是内容边界。
 
 双 Y：`pg = DualY(journal='single')` → `pg.guide(ws, y)` 先画透明引导线 → 左层 `pg.plot(0, ...)` / `pg.bar(0, ...)`
 → `pg.guide(ws, y2, right=True)` → `pg.plot_right(...)` → `pg.style_dual(xt, yt, y2t)`。参见 `catalog/production/bar_line_dualy.py`。

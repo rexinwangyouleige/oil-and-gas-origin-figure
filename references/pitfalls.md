@@ -49,3 +49,7 @@
 | 42 | **`'ls'` 会在图例里出现两条**：线 + 点是两个 plot，Origin 默认每个 plot 一条 | `Page.legend()` 按 `_legend_idx` 只保留线那条，并用 `lb.set_str('text', r'\l(1) %(1)\r\n\l(3) %(3)')` 改写。⚠️ 用 LabTalk 的 `legend.text$="…"` 会把 `%()` **当场展开**成列名，且 `\r\n` 必须写成真换行 |
 | 43 | **判断"哪个角是空的"时，图例自己会占住右上角** | 先 `legend.show=0` → 导探针图 → 统计四角墨迹 → `legend.show=1` 再定位。`Page.legend()` 已内置 |
 | 44 | **字号放大后页边距不改，轴标题会压出界**：bold 档 10 pt 轴标题在 14 mm 左边距下，`check` 报 `in_page FAIL`（"t )" 出界） | 档位里连 `margin_mm` 一起改（bold：17/4/8/13）；且 `set_preset()` 要在 `Page(...)` 之前调，否则边距已定 |
+| 45 | **图例多列靠制表符**：`legend.text` 里用 `\t` 分列、`\r\n` 换行，Origin 按制表位对齐；列一多整条图例会**宽于坐标区**、横着溢到框外（`check` 报 `in_page FAIL`） | 先用 `legend.width` 按毫米量宽，过滤掉塞不进框的列数，再挑角。`Page.legend(ncols=None)` 已内置 |
+| 46 | **「调整页面至图层大小 / 调整图层至页面大小」的 LabTalk**：菜单里有，但 `page -FLP` 之类都是空操作；`page -FLS` 是「Center Layer(s) to Page」，别混 | `run.section(Graph, FitPageToAllLayers)` = 调整页面至图层大小（Ctrl+Shift+E）；`run.section(Graph, FitLayerToPage)` = 调整图层至页面大小（Ctrl+\ / Ctrl+0）。`Page.fit_page()` 两条连着调，页面边界=内容边界 |
+| 47 | **图例压数据是硬伤**：早期版本按“墨迹占比 < 0.4%”判空白，图例仍会压到细线/少量点上 | 只接受**墨迹为 0** 的角；四角都不空就把坐标区放大（单面板宽高同时加，保持 XY 等长）重试，最多 3 轮，再不行把图例字号降到 7 pt，最后才退化并打印告警。`Page.legend()` 已按此实现 |
+| 48 | **多列图例的文本要在“选定列数”之后重写**：探测各列数时会反复 `set_str('text')`，最后一次写的是最大列数，直接拿去定位 → 图例变成一整行横穿全图 | 选完 `ncols` 再 `apply(nc)` 一次，然后才 `legend_place`。`Page.legend()` 已修 |

@@ -57,6 +57,7 @@ class Page:
         self.layers = [self.g[i] for i in range(rows * cols)]
         self.book = None
         self.legend_scores = None
+        self.legend_ncols = 1
         self._legend_idx = []          # 要进图例的 plot 序号（1 基），Page.plot/bar 自动记
         self._layout(margin or PREFS.get('margin_mm', (14, 4, 6, 11)),
                      gap or PREFS.get('gap_mm', (16, 15)))
@@ -283,64 +284,149 @@ class Page:
             out[where] = float(sub.mean()) if sub.size else 1.0
         return out
 
-    def _grow_top(self, delta_mm):
-        """页面上边加高 delta_mm，所有层跟着下移 → 顶部留一条空白带放图例。"""
+    def _legend_text(self, ncols=1):
+        """按 ncols 列生成图例文本：每行 `\\l(k) %(k)` 用制表符分列（Origin 图例认 \\t 当列分隔）。"""
+        idx = list(dict.fromkeys(self._legend_idx))
+        n = len(idx)
+        if n == 0:
+            return None
+        ncols = max(1, min(int(ncols), n))
+        rows = (n + ncols - 1) // ncols
+        lines = []
+        for r in range(rows):                    # 列优先：先填满第一列，再第二列
+            cells = []
+            for c in range(ncols):
+                k = c * rows + r
+                if k < n:
+                    i = idx[k]
+                    cells.append('\\l(%d) ' % i + '%%(%d)' % i)
+            lines.append('\t'.join(cells))
+        return '\r\n'.join(lines)
+
+    def _grow_frame(self, i, delta_mm, keep_square=None):
+        """把第 i 个层所在的坐标区**放大** delta_mm：高度加 delta，单面板同时把宽度也加 delta
+        （XY 轴视觉等长，坑：只看高度会把图拉长条）。页面跟着长，图例仍落在框内。"""
         if delta_mm <= 0:
             return self.size_mm
+        keep_square = (len(self.layers) == 1) if keep_square is None else keep_square
+        dw = delta_mm if keep_square else 0.0
+        row = i // self.cols
         W, H = self.size_mm
-        self.frames = [(L, T + delta_mm, w, h) for (L, T, w, h) in self.frames]
-        self.size_mm = (W, H + delta_mm)
+        for idx, (L, T, w, h) in enumerate(self.frames):
+            r, _c = divmod(idx, self.cols)
+            if r == row:
+                self.frames[idx] = (L, T, w + dw, h + delta_mm)
+            elif r > row:
+                self.frames[idx] = (L, T + delta_mm, w, h)
+        self.size_mm = (W + dw, H + delta_mm)
         st.set_page_mm(self.g, *self.size_mm)
         for idx in range(len(self.layers)):
             self._apply_frame(idx)
         return self.size_mm
 
-    def legend(self, i=0, where='auto', pad_mm=None, pt=None, grow=True):
-        """给第 i 个面板加图例：文字取列 long name、无边框、自动找最空的角。
+    def legend(self, i=0, where='auto', pad_mm=None, pt=None, grow=True, ncols=None):
+        """给第 i 个面板加图例：文字取列 long name、无边框、自动找空角、自动排成几列。
 
-        where : 'auto'（默认：四角里墨迹最少的）或 'tl' / 'tr' / 'bl' / 'br'
-        grow  : 四角都被数据占住时，是否把页面上边加高 legend_grow_mm（默认 20），放右上角
-        返回  : 实际用的位置，'tr'/'tl'/'br'/'bl'，加高后放的是 'tr-grow'
+        **硬规则：图例绝不压数据**——只接受墨迹为 0 的角。四角都不空时，
+        把这一行坐标区放大 legend_grow_mm（单面板同时加宽，保持 XY 等长）后重试，
+        最多 3 轮；还不行就把图例字号降到 7 pt 再试一轮；最后才退化为"墨迹最少角"并告警。
+
+        where : 'auto'（默认）或 'tl' / 'tr' / 'bl' / 'br'
+        ncols : 列数。None = 自动试 1 列 → 2 列 → …，取第一个能塞进空角的
+        grow  : 是否允许放大坐标区
+        返回  : 'tr' / 'tl' / 'br' / 'bl'；放大过的是 'tr+grow'；实在放不下是 'tr!overlap'
         """
         gl = self.layers[i]
         pad = PREFS.get('legend_pad_mm', 2.0) if pad_mm is None else pad_mm
         st.activate(gl)
         lb = st.make_legend(gl, pt=pt)
-        if self._legend_idx:
-            # 只列"每个数据列一条"：'ls' 会画线 + 点两次，不收敛就会重复两条（坑 #42）
-            try:
-                txt = '\r\n'.join('\\l(%d) %%(%d)' % (k, k)
-                                  for k in dict.fromkeys(self._legend_idx))
-                lb.set_str('text', txt)
-                op.lt_exec('doc -uw')
-            except Exception as e:
-                print('set legend text failed, 用 Origin 自动条目:', e)
-        size = st.legend_size_mm(gl)
+        eps = PREFS.get('legend_ink_max', 0.0)
+        order = ('tr', 'tl', 'br', 'bl')
+        n = len(dict.fromkeys(self._legend_idx))
+        cands = [ncols] if ncols else list(range(1, max(1, n) + 1))
 
-        corner = where
-        if where == 'auto':
-            gl.lt_exec('legend.show=0;')            # 量完尺寸先藏起来，别把自己算成障碍物
+        def apply(nc):
+            txt = self._legend_text(nc)
+            if txt:
+                try:
+                    lb.set_str('text', txt)      # 只列"每个数据列一条"，'ls' 不会重复（坑 #42）
+                    op.lt_exec('doc -uw')
+                except Exception as e:
+                    print('set legend text failed, 用 Origin 自动条目:', e)
+            return st.legend_size_mm(gl)
+
+        def try_round(cands):
+            """这一轮：一次探针图 + 各列数各角的墨迹，返回 (corner, ncols, size, scores) 或 None。"""
+            frame_w = self.frames[i][2]
+            usable = []
+            for nc in cands:
+                size = apply(nc)
+                if size[0] <= frame_w - 2 * pad - 0.5:
+                    usable.append((nc, size))
+            if not usable:
+                usable = [(cands[0], apply(cands[0]))]
+            gl.lt_exec('legend.show=0;')
             mask = self._ink_mask()
             gl.lt_exec('legend.show=1;')
-            scores = self._corner_ink(mask, i, size, pad)
-            self.legend_scores = scores
-            order = ('tr', 'tl', 'br', 'bl')
-            corner = min(order, key=lambda k: (scores[k], order.index(k)))
-            if scores[corner] > PREFS.get('legend_ink_max', 0.004):
-                corner = None
+            best, free = None, None
+            for nc, size in usable:
+                scores = self._corner_ink(mask, i, size, pad)
+                pick = min(order, key=lambda k: (scores[k], order.index(k)))
+                if best is None or scores[pick] < best[0]:
+                    best = (scores[pick], pick, size, nc, scores)
+                if scores[pick] <= eps:
+                    free = (pick, nc, size, scores)
+                    break
+            self.legend_scores = (free or best)[3]
+            return free, best, usable
 
-        if corner is None:
-            if not grow:
-                corner = 'tr'
-                st.legend_place(gl, self.frames[i], corner, pad, size)
-                return corner
-            self._grow_top(PREFS.get('legend_grow_mm', 20.0))
-            L, T, W, H = self.frames[i]
-            st.legend_place_mm(gl, self.frames[i], L + W - pad - size[0], pad, size)
-            return 'tr-grow'
+        free, best, usable = try_round(cands)
+        grown = 0
+        while free is None and grow and grown < 3:
+            self._grow_frame(i, PREFS.get('legend_grow_mm', 15.0))
+            grown += 1
+            free, best, usable = try_round(cands)
 
-        st.legend_place(gl, self.frames[i], corner, pad, size)
-        return corner
+        if free is None:                      # 还是挤：把图例字号降到 7 pt 再试
+            try:
+                st.make_legend(gl, pt=7)
+                free, best, usable = try_round(cands)
+            except Exception as e:
+                print('legend 7pt retry failed:', e)
+
+        if free is not None:
+            corner, nc, size, _scores = free
+            size = apply(nc)                 # 写回选中列数的文本（探测时停在别的列数上了）
+            self.legend_ncols = nc
+            st.legend_place(gl, self.frames[i], corner, pad, size)
+            return corner + ('+grow' if grown else '')
+
+        # 兜底：一定会压一点数据，明确告警（正常数据走不到这里）
+        _score, pick, size, nc, _s = best
+        size = apply(nc)
+        self.legend_ncols = nc
+        st.legend_place(gl, self.frames[i], pick, pad, size)
+        print('[ogfig] 警告：四角都被数据占满，图例在 %s 角与曲线有轻微重叠' % pick)
+        return pick + '!overlap'
+
+    def fit_page(self, fit_layers=True):
+        """Origin 的两步"去掉多余白边"：
+
+            run.section(Graph, FitPageToAllLayers)   # 调整页面至图层大小（Ctrl+Shift+E）
+            run.section(Graph, FitLayerToPage)       # 调整图层至页面大小（Ctrl+\\ / Ctrl+0）
+
+        先让页面缩到层的范围，再把层铺满页面，页面边界就是内容边界。
+        fit_layers=False 只做第一步（页面缩到图层、四周仍留轴的即定边距）。
+        返回新的页面 (宽, 高) mm，并同步 self.size_mm / self.frames。
+        """
+        op.lt_exec('win -a %s;' % self.g.name)
+        op.lt_exec('run.section(Graph, FitPageToAllLayers)')
+        if fit_layers:
+            op.lt_exec('run.section(Graph, FitLayerToPage)')
+        op.lt_exec('doc -uw')
+        self.size_mm = st.page_mm(self.g)
+        self.frames = [st.frame_mm(gl, self.g) for gl in self.layers]
+        return self.size_mm
 
     def finish(self):
         op.lt_exec('doc -uw')

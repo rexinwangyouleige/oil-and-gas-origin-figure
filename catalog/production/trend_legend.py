@@ -27,8 +27,8 @@ OUT = os.path.join(SKILL, 'catalog', 'out')
 os.makedirs(OUT, exist_ok=True)
 
 MODE = (sys.argv[1] if len(sys.argv) > 1 else 'normal').lower()
-if MODE not in ('normal', 'bold', 'grow'):
-    raise SystemExit('用法：python catalog/production/trend_legend.py [normal|bold|grow]')
+if MODE not in ('normal', 'bold', 'grow', 'tight', 'cols'):
+    raise SystemExit('用法：python catalog/production/trend_legend.py [normal|bold|grow|tight|cols]')
 
 if MODE == 'bold':
     style.set_preset('bold')                   # 字号 10 / 线 2.0 pt / 轴 1.5 pt
@@ -42,6 +42,13 @@ WELLS = [
     ('B 井 q\\-(o) (10\\+(4) t)', 78.0, 0.062),
     ('C 井 q\\-(o) (10\\+(4) t)', 55.0, 0.041),
 ]
+if MODE == 'cols':                             # 6 条曲线 → 图例自动排成 2~3 列
+    WELLS = [('A 井 q\\-(o)', 100.0, 0.085),
+             ('B 井 q\\-(o)', 84.0, 0.070),
+             ('C 井 q\\-(o)', 70.0, 0.058),
+             ('D 井 q\\-(o)', 58.0, 0.048),
+             ('E 井 q\\-(o)', 46.0, 0.038),
+             ('F 井 q\\-(o)', 34.0, 0.028)]
 curves = [(name, qi * np.exp(-d * t)) for name, qi, d in WELLS]
 
 pg = Page(1, 1, journal='single', lname='OGFIG_LEGEND')
@@ -51,25 +58,28 @@ for k, (name, y) in enumerate(curves):
     ws.from_list(1 + k, y, lname=name)
 
 for k in range(len(WELLS)):
-    pg.plot(0, ws, 1 + k, 0, kind='ls', color=style.C[k], width=style.DEFAULTS['line_width'])
+    pg.plot(0, ws, 1 + k, 0, kind='ls', color=style.C[k % len(style.C)], width=style.DEFAULTS['line_width'])
 style.apply_axes(pg.layer(0), '生产时间 Time (month)', '产油量 Production (10\\+(4) t)')
 pg.layer(0).rescale()
 style.limits(pg.layer(0), x=(0, 24), y=(0, 120), xinc=4, yinc=20)
 
-if MODE == 'grow':                             # 故意把四个角都占住，逼出"加高页面"分支
+if MODE == 'grow':                             # 故意把四个角都占住，逼出"加高坐标区"分支
     env = pg.sheet('ENV', 3)
     env.from_list(0, np.array([0.0, 24.0]), lname='生产时间 t')
-    env.from_list(1, np.array([5.0, 115.0]), lname='上包络 Envelope (10\\+(4) t)')
-    env.from_list(2, np.array([115.0, 5.0]), lname='下包络 Envelope (10\\+(4) t)')
+    env.from_list(1, np.array([5.0, 100.0]), lname='上包络 Envelope (10\\+(4) t)')
+    env.from_list(2, np.array([100.0, 5.0]), lname='下包络 Envelope (10\\+(4) t)')
     pg.plot(0, env, 1, 0, kind='l', color=style.GRAY, dash=3)
     pg.plot(0, env, 2, 0, kind='l', color=style.GRAY, dash=3)
 
 pg.layer(0).rescale()
 style.limits(pg.layer(0), x=(0, 24), y=(0, 120), xinc=4, yinc=20)
 
-where = pg.legend(0)                           # ← 自动找空白角；没地方就加高页面
-print('legend corner:', where, '| scores:', pg.legend_scores)
+where = pg.legend(0, ncols=2 if MODE == 'cols' else None)   # ← 自动挑角；cols 模式强制两列
+print('legend corner:', where, '| ncols:', pg.legend_ncols, '| scores:', pg.legend_scores)
 print('page mm:', tuple(round(v, 1) for v in pg.size_mm))
+
+if MODE == 'tight':                            # Origin 两步：页面→图层，再图层→页面（去白边）
+    print('fit_page ->', tuple(round(v, 1) for v in pg.fit_page()))
 
 pg.finish()
 name = 'trend_legend' if MODE == 'normal' else 'trend_legend_%s' % MODE
