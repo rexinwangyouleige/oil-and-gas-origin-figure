@@ -54,10 +54,27 @@ python catalog/production/trend_legend.py tight       # Fit Page/Layer 去白边
 
 脚本都在 skill 根目录跑，产物落在 `catalog/out/<名字>.png / .tif / .pdf / .opju / _gray.png`。
 
+## 安装到各类 agent 工具
+
+**Claude Code / VS Code Copilot / DeepSeek Harness / Codex / Cursor / Cline / WorkBuddy…** 的安装位置、验证方法、
+以及一段可以**直接粘给豆包等 AI 让它帮你装**的提示词，都写在 **[INSTALL.md](INSTALL.md)**。
+
+最短路径（Windows，通用位置；Claude Code 用 `~/.claude/skills`、DSH 用 `~/.dsh/skills`）：
+
+```powershell
+git clone --branch v0.2.2 --depth 1 https://github.com/rexinwangyouleige/oil-and-gas-origin-figure.git `
+  "$env:USERPROFILE\.agents\skills\oil-and-gas-origin-figure"
+```
+
+装完在会话里说一句"用 oil-and-gas-origin-figure 画一张产量递减图"即可触发。
+
+> 能读 `SKILL.md` 的 agent 都支持本技能；没有 skills 目录的工具，把
+> `~/.agents/skills/oil-and-gas-origin-figure/SKILL.md` 写进它的项目规则（`AGENTS.md` / `.cursor/rules`）即可。
+
 ## 作为 agent skill 使用
 
-把整个目录放进你的 skills 目录（例如 `~/.dsh/skills/` 或项目里的 `skills/`），带 `SKILL.md` 即可被识别；
-模型按 SKILL.md 的工作流调用 `ogfig` 出图。
+把整个目录放进你的 skills 目录（例如 `~/.dsh/skills/`、`~/.claude/skills/`、`~/.agents/skills/`），带 `SKILL.md` 即可被识别；
+模型按 SKILL.md 的工作流调用 `ogfig` 出图。详见 [INSTALL.md](INSTALL.md)。
 
 ## 样式规范（默认值，不必每次重申）
 
@@ -85,6 +102,7 @@ python catalog/production/trend_legend.py tight       # Fit Page/Layer 去白边
 
 | 版本 | 内容 |
 |---|---|
+| **v0.2.2** | 新增 [INSTALL.md](INSTALL.md)：Claude Code / VS Code Copilot / DeepSeek Harness / Codex / Cursor / Cline / WorkBuddy 的安装位置、验证步骤、更新卸载，以及**一段可直接粘给豆包等 AI 的安装提示词** |
 | **v0.2.1** | 图例**绝不压数据**（零墨迹角 → 放大坐标区 3 轮 → 7 pt → 告警）；多列排布（`ncols` 自动/指定）；`pg.fit_page()` 去白边（Origin「页面→图层」+「图层→页面」）；清理实验死代码 |
 | **v0.2.0** | **自动图例**（文字取列 long name、无边框、自动挑空白角）；**`bold` 明显版风格档**（字号 9–11、轴 1.5 pt、线 2.0 pt、刻度 4.5、符号 6、页边距同步放大）；`catalog/production/trend_legend.py` 示例 |
 | v0.1.0 | 首个可用版本：ogfig 引擎（Page / DualY / style / export / check / cli / templates）、9 个图型脚本、样式规范、坑清单、2026b 速查、API 手册 |
